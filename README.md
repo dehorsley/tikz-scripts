@@ -7,7 +7,7 @@ file, it will perform the [Visvalingam–Whyatt algorithm][1] to simplify the pa
 within. This can greatly reduce the rendering time of the TikZ figure, as well
 as reduce the size of the resultant PDF file. The minimum resolution will need
 to be specified; I recommend around `(axis width)*(axis height)/(res * (target
-width)*(target height))` where `res ~= 400-600`.
+width in cm)*(target height in cm))` where `res ~= 400-600 pix/cm^2`.
 
 Usage:
 ```
