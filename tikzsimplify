@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from __future__ import print_function
+
 import re
 from heapq import *
 from functools import total_ordering
@@ -117,7 +119,7 @@ while line:
                         simplify(head,tol)
                     pt = head
                     while pt:
-                        print("\t%0.6f\t%0.6f\\\\"%(pt.x,pt.y))
+                        print("\t%0.6g\t%0.6g\\\\"%(pt.x,pt.y))
                         pt = pt.n
                     print(line,end="")
 
