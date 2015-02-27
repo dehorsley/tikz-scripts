@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+
+import re
+from heapq import *
+from functools import total_ordering
+import sys
+
+@total_ordering
+class Point:
+    #Doubly linked list of coordinates
+
+    def __init__(self,x,y,p=None,n=None):
+        self.x = x
+        self.y = y
+        self.n = n
+        self.p = p
+
+        if p:
+            p.n = self
+        if n:
+            n.p = self
+
+    def area(self):
+        if self.n is None or self.p is None:
+            return None
+
+        a = self.p
+        b = self
+        c = self.n
+
+        ar = abs((b.y - c.y)*a.x + (c.y-a.y)*b.x + (a.y-b.y)*c.x)/2
+
+        return ar
+
+    def __lt__(self,other):
+        return self.area() < other.area()
+
+    def __eq__(self,other):
+        return self.area() == other.area()
+
+
+def simplify(head,tol=0.0005):
+    h = []
+    maxArea = 0
+
+    #Add the points to the min-heap comparing via area.The first and last points
+    #are skipped
+    pt = head.n
+    while pt.n:
+        heappush(h,pt)
+        pt = pt.n
+
+    i = 0
+    while len(h) > 0 and h[0].area() < tol:
+        i += 1
+        pt = heappop(h)
+        pt.p.n = pt.n
+        pt.n.p = pt.p
+
+    print("%d points removed"%i,file=sys.stderr)
+
+
+
+
+f = open(sys.argv[1],'r')
+if len(sys.argv) > 2:
+    tol = float(sys.argv[2])
+else:
+    tol = 0.005
+
+# start = re.compile('\s*table.*{')
+start = re.compile('.*addplot')
+end = re.compile('}')
+
+state = 0 # table state
+
+line = f.readline()
+while line:
+
+    if start.match(line):
+        hline = line
+        hline2 = f.readline()
+        state = 1
+
+        n = 0
+        #Initialize the linked list
+        head = None
+        tail = None
+
+        while state == 1: 
+
+            if not line:
+                print("BAD FILE",file=sys.stderr)
+                sys.exit(1)
+
+
+            line = f.readline()
+
+            if not end.match(line):
+                x,y = line.split()
+                if x == 'nan' or y == 'nan\\\\':
+                    continue
+                x,y = float(x),float(y.strip('\\'))
+
+                tail = Point(x,y,tail)
+                if n == 0:
+                    head = tail
+
+                n += 1;
+            else:
+                state = 0
+                print("%d points found"%n,file=sys.stderr)
+                if n > 0:
+                    print(hline,end="")
+                    print(hline2,end="")
+                    if n > 2:
+                        simplify(head,tol)
+                    pt = head
+                    while pt:
+                        print("\t%0.6f\t%0.6f\\\\"%(pt.x,pt.y))
+                        pt = pt.n
+                    print(line,end="")
+
+    else:
+        print(line,end="")
+
+
+
+    line = f.readline()
+
