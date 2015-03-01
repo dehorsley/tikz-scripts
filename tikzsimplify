@@ -125,18 +125,15 @@ def simplify_plot(match):
     xmax = float(re.search('xmax=(.*?),',opts).group(1))
     ymin = float(re.search('ymin=(.*?),',opts).group(1))
     ymax = float(re.search('ymax=(.*?),',opts).group(1))
+    if tol is None:
+        tab_tol = (xmax-xmin)*(ymax-ymin)/(15*9*400)
+        print("selecting tol of: %g"%tab_tol,file=sys.stderr)
+    else:
+        tab_tol = tol
     
     def simplify_table(match):
         path = Point(comments.sub('',match.group(3)))
-        if tol is None:
-            tab_tol = (xmax-xmin)*(ymax-ymin)/(15*9*400)
-            
-            print("selecting tol of: %g"%tab_tol,file=sys.stderr)
-        else:
-            tab_tol = tol
-
         path.simplify(tab_tol)
-
         return '\\addplot %s\n  table%s{%%\n%s\n};' % ( match.group(1) or '', match.group(2) or '', path.render())
 
     return  '\\begin{axis}%s\n%s\n\\end{axis}'%( match.group(1) or '', plot.sub(simplify_table,match.group(2)) or '')
@@ -150,6 +147,7 @@ else:
     tol = None
 
 s = f.read()
-s = lead_on_plots.sub(r'\1',s)
+s,n = lead_on_plots.subn(r'\1',s)
+print("merged %d lead on plots"%n,file=sys.stderr)
 s = axis.sub(simplify_plot,s)
 print(s)
