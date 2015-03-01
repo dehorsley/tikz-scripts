@@ -7,13 +7,12 @@ from functools import total_ordering
 import sys
 
 tikzpic = re.compile(r'\\begin{tikzpicture}(.*)\end{tikzpicture}',re.MULTILINE|re.DOTALL)
-axis = re.compile(r'\\begin{axis}\s*?(\[.*?\])?(.*?)\end{axis}',re.MULTILINE|re.DOTALL)
+axis = re.compile(r'\\begin{axis}\s*?(\[.*?\])?(.*?)\\end{axis}',re.MULTILINE|re.DOTALL)
 plot= re.compile(r'\\addplot\s*?(\[.*?\])?\s*?table\s*?(\[.*?\])?\s*?{(.*?)};',re.MULTILINE|re.DOTALL)
 comments = re.compile(r'%.*?$.?',re.MULTILINE|re.DOTALL)
 
 #Match plots of the same style that lead on from each other.
 #matlab2tikz sometimes creates these and I don't know why
-
 lead_on_plots = re.compile(r'''( \\addplot \s* (\[.*?\]) \s*
                                    table \s*? (\[.*?\]) \s* { % \s*
                                        (.*?)
@@ -140,7 +139,7 @@ def simplify_plot(match):
 
         return '\\addplot %s\n  table%s{%%\n%s\n};' % ( match.group(1) or '', match.group(2) or '', path.render())
 
-    return  '\\begin{axis}%s\n%s\n\end{axis}'%( match.group(1) or '', plot.sub(simplify_table,match.group(2)) or '')
+    return  '\\begin{axis}%s\n%s\n\\end{axis}'%( match.group(1) or '', plot.sub(simplify_table,match.group(2)) or '')
 
 
 tol = None
