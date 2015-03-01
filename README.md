@@ -5,16 +5,17 @@ This repo contains a few scripts I wrote for dealing with matlab2tikz generated 
 This is probably the most useful. If you give it a matlab2tikz generated `.tex`
 file, it will perform the [Visvalingam–Whyatt algorithm][1] to simplify the paths
 within. This can greatly reduce the rendering time of the TikZ figure, as well
-as reduce the size of the resultant PDF file. The minimum resolution will need
-to be specified; I recommend around `(axis width)*(axis height)/(res * (target
-width in cm)*(target height in cm))` where `res ~= 400-600 pix/cm^2`.
+as reduce the size of the resultant PDF file. The script will attempt to guess a
+good tolerance for the simplification algorithm by assuming your figure is
+around 15cm by 9 cm. Otherwise you will need to specify a tolerance. I recommend
+around `(axis width)*(axis height)/(res * (target width in cm)*(target height in cm))` where `res ~= 400-600 pix/cm^2`.
 
 Usage:
 ```
-python fig.tex tol > fig-clean.tex
+python fig.tex [tol] > fig-clean.tex
 ```
 
-It's written in python3, but should also work in python2.7.
+It's written for python3 but should work in python2.7.
 
 ## pdf2pdf
 Modified version of eps2eps. In most cases it will reduce the size of a PDF file.
