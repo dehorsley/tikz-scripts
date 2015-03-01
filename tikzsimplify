@@ -1,26 +1,65 @@
 #!/usr/bin/env python3
 
-from __future__ import print_function
-
+from __future__ import print_function #Use python3 print statments in python2.7
 import re
 from heapq import *
 from functools import total_ordering
 import sys
 
+tikzpic = re.compile(r'\\begin{tikzpicture}(.*)\end{tikzpicture}',re.MULTILINE|re.DOTALL)
+axis = re.compile(r'\\begin{axis}\s*?(\[.*?\])?(.*?)\end{axis}',re.MULTILINE|re.DOTALL)
+plot= re.compile(r'\\addplot\s*?(\[.*?\])?\s*?table\s*?(\[.*?\])?\s*?{(.*?)};',re.MULTILINE|re.DOTALL)
+comments = re.compile(r'%.*?$.?',re.MULTILINE|re.DOTALL)
+
+#Match plots of the same style that lead on from each other.
+#matlab2tikz sometimes creates these and I don't know why
+
+lead_on_plots = re.compile(r'''( \\addplot \s* (\[.*?\]) \s*
+                                   table \s*? (\[.*?\]) \s* { % \s*
+                                       (.*?)
+                                       ^(.*?)$) \s*};
+                              \s*  \\addplot .* \2 .*? \5
+                            ''',re.X|re.MULTILINE|re.DOTALL)
 @total_ordering
 class Point:
     #Doubly linked list of coordinates
 
-    def __init__(self,x,y,p=None,n=None):
-        self.x = x
-        self.y = y
-        self.n = n
-        self.p = p
+    def __init__(self,x,y=None,p=None,n=None):
+        #If we're given a y value, assume x and y are coordinates of a point,
+        #otherwise assume x is the string of a path in table format.
 
-        if p:
-            p.n = self
-        if n:
-            n.p = self
+        if y:
+            self.x = x
+            self.y = y
+            self.n = n
+            self.p = p
+
+            if p:
+                p.n = self
+            if n:
+                n.p = self
+        else:
+            rows = x.split('\n')
+            
+            row = rows.pop(0)
+            x,y = row.split()
+            x,y = float(x),float(y.strip('\\'))
+            self.x = x
+            self.y = y
+            i = 1
+
+            pt = self
+            for row in rows:
+                if row:
+                    x,y = row.split()
+                    if x == 'nan' or y == 'nan\\\\':
+                        continue
+                    x,y = float(x),float(y.strip('\\'))
+                    pt = Point(x,y,pt)
+                    i += 1
+            print("%d points found"%i,file=sys.stderr)
+            
+
 
     def area(self):
         if self.n is None or self.p is None:
@@ -40,13 +79,32 @@ class Point:
     def __eq__(self,other):
         return self.area() == other.area()
 
+    def __str__(self):
+        return '\t%0.6f\t%0.6f' % (self.x,self.y)
+
+    def render(self):
+        '''
+        Render the remaining points in the path to table format
+        '''
+        pathlist=[]
+        pt = self
+        while pt:
+            pathlist.append('\t%0.6f\t%0.6f\\\\' % (pt.x,pt.y))
+            pt = pt.n
+        return '\n'.join(pathlist)
 
     def simplify(self,tol):
-        h = []
-        maxArea = 0
+        '''
+         Perform the Visvalingam--Whyatt algorithm to simplify the path.
+         Points are added to a min-heap where the value associated is the 
+         area of the triangle made with its two neighbouring points. Points
+         are then removed from the list, minimum first, until the smallest
+         area is larger than 'tol'.
+        
+         The first and last points are skipped.
+        '''
 
-        #Add the points to the min-heap comparing via area.The first and last points
-        #are skipped
+        h = []
         pt = self.n
         while pt.n:
             heappush(h,pt)
@@ -62,96 +120,37 @@ class Point:
         print("%d points removed"%i,file=sys.stderr)
 
 
+def simplify_plot(match):
+    opts = match.group(1)
+    xmin = float(re.search('xmin=(.*?),',opts).group(1))
+    xmax = float(re.search('xmax=(.*?),',opts).group(1))
+    ymin = float(re.search('ymin=(.*?),',opts).group(1))
+    ymax = float(re.search('ymax=(.*?),',opts).group(1))
+    
+    def simplify_table(match):
+        path = Point(comments.sub('',match.group(3)))
+        if tol is None:
+            tab_tol = (xmax-xmin)*(ymax-ymin)/(15*9*400)
+            
+            print("selecting tol of: %g"%tab_tol,file=sys.stderr)
+        else:
+            tab_tol = tol
 
-class TikZPicture:
-    def __init__:
-        pass
+        path.simplify(tab_tol)
 
-class TikZAxis:
-    def __init__(self,options,content):
+        return '\\addplot %s\n  table%s{%%\n%s\n};' % ( match.group(1) or '', match.group(2) or '', path.render())
 
-
-class TikZPlot(self,options,content):
-    def __init__:
-        pass
+    return  '\\begin{axis}%s\n%s\n\end{axis}'%( match.group(1) or '', plot.sub(simplify_table,match.group(2)) or '')
 
 
+tol = None
 f = open(sys.argv[1],'rU')
 if len(sys.argv) > 2:
     tol = float(sys.argv[2])
 else:
-    tol = 0.005
+    tol = None
 
-# start = re.compile('\s*table.*{')
-tikzre = re.compile(r'\\begin{tikzpicture}(.*)\end{tikzpicture}',re.MULTILINE|re.DOTALL)
-axisre = re.compile(r'\\begin{axis}[(.*)](.*?)\end{axis}',re.MULTILINE|re.DOTALL)
-
-plotstart = re.compile(r'\s*\\addplot')
-plotend = re.compile('}')
-
-comments = re.compile(r'%.*?$.?',re.MULTILINE|re.DOTALL)
-
-
-state = 0 # table state
-
-line = f.readline()
-while line:
-    if tikzp.match(line):
-        line = f.readline()
-        while tikzend.match(line):
-            if plotstart.match(line):
-
-            line = f.readline()
-
-        line = f.readline()
-
-        hline = line
-        hline2 = f.readline()
-        state = 1
-
-        n = 0
-        #Initialize the linked list
-        head = None
-        tail = None
-
-        while state == 1: 
-
-            if not line:
-                print("BAD FILE",file=sys.stderr)
-                sys.exit(1)
-
-
-            line = f.readline()
-
-            if not end.match(line):
-                x,y = line.split()
-                if x == 'nan' or y == 'nan\\\\':
-                    continue
-                x,y = float(x),float(y.strip('\\'))
-
-                tail = Point(x,y,tail)
-                if n == 0:
-                    head = tail
-
-                n += 1;
-            else:
-                state = 0
-                print("%d points found"%n,file=sys.stderr)
-                if n > 0:
-                    print(hline,end="")
-                    print(hline2,end="")
-                    if n > 2:
-                        simplify(head,tol)
-                    pt = head
-                    while pt:
-                        print("\t%0.6g\t%0.6g\\\\"%(pt.x,pt.y))
-                        pt = pt.n
-                    print(line,end="")
-
-    else:
-        print(line,end="")
-
-
-
-    line = f.readline()
-
+s = f.read()
+s = lead_on_plots.sub(r'\1',s)
+s = axis.sub(simplify_plot,s)
+print(s)
