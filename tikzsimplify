@@ -41,45 +41,70 @@ class Point:
         return self.area() == other.area()
 
 
-def simplify(head,tol=0.0005):
-    h = []
-    maxArea = 0
+    def simplify(self,tol):
+        h = []
+        maxArea = 0
 
-    #Add the points to the min-heap comparing via area.The first and last points
-    #are skipped
-    pt = head.n
-    while pt.n:
-        heappush(h,pt)
-        pt = pt.n
+        #Add the points to the min-heap comparing via area.The first and last points
+        #are skipped
+        pt = self.n
+        while pt.n:
+            heappush(h,pt)
+            pt = pt.n
 
-    i = 0
-    while len(h) > 0 and h[0].area() < tol:
-        i += 1
-        pt = heappop(h)
-        pt.p.n = pt.n
-        pt.n.p = pt.p
+        i = 0
+        while len(h) > 0 and h[0].area() < tol:
+            i += 1
+            pt = heappop(h)
+            pt.p.n = pt.n
+            pt.n.p = pt.p
 
-    print("%d points removed"%i,file=sys.stderr)
-
-
+        print("%d points removed"%i,file=sys.stderr)
 
 
-f = open(sys.argv[1],'r')
+
+class TikZPicture:
+    def __init__:
+        pass
+
+class TikZAxis:
+    def __init__(self,options,content):
+
+
+class TikZPlot(self,options,content):
+    def __init__:
+        pass
+
+
+f = open(sys.argv[1],'rU')
 if len(sys.argv) > 2:
     tol = float(sys.argv[2])
 else:
     tol = 0.005
 
 # start = re.compile('\s*table.*{')
-start = re.compile('.*addplot')
-end = re.compile('}')
+tikzre = re.compile(r'\\begin{tikzpicture}(.*)\end{tikzpicture}',re.MULTILINE|re.DOTALL)
+axisre = re.compile(r'\\begin{axis}[(.*)](.*?)\end{axis}',re.MULTILINE|re.DOTALL)
+
+plotstart = re.compile(r'\s*\\addplot')
+plotend = re.compile('}')
+
+comments = re.compile(r'%.*?$.?',re.MULTILINE|re.DOTALL)
+
 
 state = 0 # table state
 
 line = f.readline()
 while line:
+    if tikzp.match(line):
+        line = f.readline()
+        while tikzend.match(line):
+            if plotstart.match(line):
 
-    if start.match(line):
+            line = f.readline()
+
+        line = f.readline()
+
         hline = line
         hline2 = f.readline()
         state = 1
