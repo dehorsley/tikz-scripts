@@ -5,6 +5,7 @@ import re
 from heapq import *
 from functools import total_ordering
 import sys
+from math import log10,pow
 
 tikzpic = re.compile(r'\\begin{tikzpicture}(.*)\end{tikzpicture}',re.MULTILINE|re.DOTALL)
 axis = re.compile(r'\\begin{axis}\s*?(\[.*?\])?(.*?)\\end{axis}',re.MULTILINE|re.DOTALL)
@@ -19,46 +20,20 @@ lead_on_plots = re.compile(r'''( \\addplot \s* (\[.*?\]) \s*
                                        ^(.*?)$) \s*};
                               \s*  \\addplot .* \2 .*? \5
                             ''',re.X|re.MULTILINE|re.DOTALL)
+
 @total_ordering
 class Point:
     #Doubly linked list of coordinates
 
     def __init__(self,x,y=None,p=None,n=None):
-        #If we're given a y value, assume x and y are coordinates of a point,
-        #otherwise assume x is the string of a path in table format.
-
-        if y:
-            self.x = x
-            self.y = y
-            self.n = n
-            self.p = p
-
-            if p:
-                p.n = self
-            if n:
-                n.p = self
-        else:
-            rows = x.split('\n')
-            
-            row = rows.pop(0)
-            x,y = row.split()
-            x,y = float(x),float(y.strip('\\'))
-            self.x = x
-            self.y = y
-            i = 1
-
-            pt = self
-            for row in rows:
-                if row:
-                    x,y = row.split()
-                    if x == 'nan' or y == 'nan\\\\':
-                        continue
-                    x,y = float(x),float(y.strip('\\'))
-                    pt = Point(x,y,pt)
-                    i += 1
-            print("%d points found"%i,file=sys.stderr)
-            
-
+        self.x = x 
+        self.y = y
+        self.n = n
+        self.p = p
+        if p:
+            p.n = self
+        if n:
+            n.p = self
 
     def area(self):
         if self.n is None or self.p is None:
@@ -67,8 +42,11 @@ class Point:
         a = self.p
         b = self
         c = self.n
+        ax,bx,cx = a.x,b.x,c.x
+        ay,by,cy = a.y,b.y,c.y
 
-        ar = abs((b.y - c.y)*a.x + (c.y-a.y)*b.x + (a.y-b.y)*c.x)/2
+        # ar = abs((b.y - c.y)*a.x + (c.y-a.y)*b.x + (a.y-b.y)*c.x)/2
+        ar = abs((by - cy)*ax + (cy-ay)*bx + (ay-by)*cx)/2
 
         return ar
 
@@ -81,16 +59,6 @@ class Point:
     def __str__(self):
         return '\t%0.6f\t%0.6f' % (self.x,self.y)
 
-    def render(self):
-        '''
-        Render the remaining points in the path to table format
-        '''
-        pathlist=[]
-        pt = self
-        while pt:
-            pathlist.append('\t%0.6f\t%0.6f\\\\' % (pt.x,pt.y))
-            pt = pt.n
-        return '\n'.join(pathlist)
 
     def simplify(self,tol):
         '''
@@ -118,26 +86,84 @@ class Point:
 
         print("%d points removed"%i,file=sys.stderr)
 
+def table_to_path(s,logx=False,logy=False):
+    rows = s.split('\n')
+    head = None
+    tail = None
+
+    i = 1
+    for row in rows:
+        if row:
+            x,y = row.split()
+            if x == 'nan' or y == 'nan\\\\':
+                continue
+            x,y = float(x),float(y.strip('\\'))
+
+            if logx:
+                x = log10(x)
+            if logy:
+                y = log10(y)
+            tail = Point(x,y,tail)
+            if i ==1:
+                head = tail
+            i += 1
+    print("%d points found"%i,file=sys.stderr)
+
+    return head
+
+def path_to_table(head,logx=False,logy=False):
+    '''
+    Render points in the path to table format
+    '''
+    pathlist=[]
+    pt = head
+    while pt:
+        x,y = pt.x,pt.y
+        if logx:
+            x = pow(10,x)
+        if logy:
+            y = pow(10,y)
+        pathlist.append('\t%0.6g\t%0.6g\\\\' % (x,y))
+        pt = pt.n
+    return '\n'.join(pathlist)
 
 def simplify_plot(match):
     opts = match.group(1)
+
+    logx= False
+    xmode = re.search('xmode=(.*?),',opts)
+    if xmode and xmode.group(1) == 'log':
+        print("using logx mode",file=sys.stderr)
+        logx=True
+    
+    logy= False
+    ymode = re.search('ymode=(.*?),',opts)
+    if ymode and ymode.group(1) == 'log':
+        print("using logy mode",file=sys.stderr)
+        logy=True
+
     xmin = float(re.search('xmin=(.*?),',opts).group(1))
     xmax = float(re.search('xmax=(.*?),',opts).group(1))
+    if logx:
+        xmin,xmax = log10(xmin),log10(xmax)
+
     ymin = float(re.search('ymin=(.*?),',opts).group(1))
     ymax = float(re.search('ymax=(.*?),',opts).group(1))
+    if logy:
+        ymin,ymax = log10(ymin),log10(ymax)
+
     if tol is None:
-        tab_tol = (xmax-xmin)*(ymax-ymin)/(15*9*400)
+        tab_tol = (xmax-xmin)*(ymax-ymin)/(15*9*600)
         print("selecting tol of: %g"%tab_tol,file=sys.stderr)
     else:
         tab_tol = tol
     
     def simplify_table(match):
-        path = Point(comments.sub('',match.group(3)))
+        path = table_to_path(comments.sub('',match.group(3)),logx,logy)
         path.simplify(tab_tol)
-        return '\\addplot %s\n  table%s{%%\n%s\n};' % ( match.group(1) or '', match.group(2) or '', path.render())
+        return '\\addplot %s\n  table%s{%%\n%s\n};' % ( match.group(1) or '', match.group(2) or '', path_to_table(path,logx,logy))
 
     return  '\\begin{axis}%s\n%s\n\\end{axis}'%( match.group(1) or '', plot.sub(simplify_table,match.group(2)) or '')
-
 
 tol = None
 f = open(sys.argv[1],'rU')
@@ -147,7 +173,10 @@ else:
     tol = None
 
 s = f.read()
-s,n = lead_on_plots.subn(r'\1',s)
-print("merged %d lead on plots"%n,file=sys.stderr)
 s = axis.sub(simplify_plot,s)
+s,n = lead_on_plots.subn(r'\1',s)
+if n>0:
+    print("Merged lead-on plots, simplifying again...",file=sys.stderr)
+    s = axis.sub(simplify_plot,s)
+
 print(s)
