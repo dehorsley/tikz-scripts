@@ -178,7 +178,8 @@ s = f.read()
 s = axis.sub(simplify_plot,s)
 s,n = lead_on_plots.subn(r'\1',s)
 if n>0:
-    print("Merged lead-on plots, simplifying again...",file=sys.stderr)
+    print("Lead-on plots detected. ",file=sys.stderr)
+    print("I have merged them, but you may want to use  ('maxChunkLength',Inf) in matlab2tikz",file=sys.stderr)
     s = axis.sub(simplify_plot,s)
 
 print(s)
