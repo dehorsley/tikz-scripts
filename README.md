@@ -25,7 +25,8 @@ running optimally.
 
 To prevent this, I recommend you export your figure with `matlab2tikz(...,'maxChunkLength',Inf)`
 
-It's written for python3 but should work in python2.7.
+I highly recommend running this with [PyPy](http://pypy.org/) as it gives about a 25x
+speed improvment.
 
 ## pdf2pdf
 Modified version of eps2eps. In most cases it will reduce the size of a PDF file.
