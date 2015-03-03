@@ -2,18 +2,28 @@
 This repo contains a few scripts I wrote for dealing with matlab2tikz generated tikz figure.
 
 ## tikzsimplify
-This is probably the most useful. If you give it a matlab2tikz generated `.tex`
-file, it will perform the [Visvalingam–Whyatt algorithm][1] to simplify the paths
-within. This can greatly reduce the rendering time of the TikZ figure, as well
-as reduce the size of the resultant PDF file. The script will attempt to guess a
-good tolerance for the simplification algorithm by assuming your figure is
-around 15cm by 9 cm. Otherwise you will need to specify a tolerance. I recommend
-around `(axis width)*(axis height)/(res * (target width in cm)*(target height in cm))` where `res ~= 400-600 pix/cm^2`.
+```
+python tikzsimplify fig.tex [tol] > fig-clean.tex
+```
+This is probably the most useful script here. If you give it a matlab2tikz
+generated `.tex` file, it will perform the [Visvalingam–Whyatt algorithm][1] to
+simplify the paths within. This should stop TeX running out of memory, greatly
+reduce the rendering time of the TikZ figure and reduce the size of the
+resultant PDF file.
 
-Usage:
-```
-python fig.tex [tol] > fig-clean.tex
-```
+The script will attempt to guess a good tolerance for the simplification
+algorithm by assuming your figure is around 15cm by 9 cm. If you intend to print
+the figure larger than this, you will need to specify a tolerance in the `tol`
+parameter.  I recommend around `(axis width)*(axis height)/(res * (target width in
+cm)*(target height in cm))` where `res~=400-600 pix/cm^2`.
+
+By default, `matlab2tikz` limits the number of points in a plot in an attempt
+to stop TeX running out of memory. If a plot has more than the `maxChunkLength`
+parameter, which is 4000 by default, `matlab2tikz` splits into sub plots. This
+can cause artifacts for dashed lines but also prevents this simplify script from
+running optimally.
+
+To prevent this, I recommend you export your figure with `matlab2tikz(...,'maxChunkLength',Inf)`
 
 It's written for python3 but should work in python2.7.
 
