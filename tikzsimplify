@@ -18,7 +18,7 @@ lead_on_plots = re.compile(r'''( \\addplot \s* (\[.*?\]) \s*
                                    table \s*? (\[.*?\]) \s* { % \s*
                                        (.*?)
                                        ^(.*?)$) \s*};
-                              \s*  \\addplot .* \2 .*? \5
+                              \s*  \\addplot .*? \2 .*? \5
                             ''',re.X|re.MULTILINE|re.DOTALL)
 
 @total_ordering
@@ -153,7 +153,7 @@ def simplify_plot(match):
         ymin,ymax = log10(ymin),log10(ymax)
 
     if tol is None:
-        tab_tol = (xmax-xmin)*(ymax-ymin)/(15*9*600)
+        tab_tol = (xmax-xmin)*(ymax-ymin)/(15*9*500)
         print("selecting tol of: %g"%tab_tol,file=sys.stderr)
     else:
         tab_tol = tol
@@ -163,7 +163,9 @@ def simplify_plot(match):
         path.simplify(tab_tol)
         return '\\addplot %s\n  table%s{%%\n%s\n};' % ( match.group(1) or '', match.group(2) or '', path_to_table(path,logx,logy))
 
+
     return  '\\begin{axis}%s\n%s\n\\end{axis}'%( match.group(1) or '', plot.sub(simplify_table,match.group(2)) or '')
+
 
 tol = None
 f = open(sys.argv[1],'rU')
