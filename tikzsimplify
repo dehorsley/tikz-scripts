@@ -1,3 +1,4 @@
+#!/usr/bin/env pypy3
 #!/usr/bin/env python3
 
 from __future__ import print_function #Use python3 print statments in python2.7
@@ -6,6 +7,8 @@ from heapq import *
 from functools import total_ordering
 import sys
 from math import log10,pow
+
+from operator import lt
 
 tikzpic = re.compile(r'\\begin{tikzpicture}(.*)\end{tikzpicture}',re.MULTILINE|re.DOTALL)
 axis = re.compile(r'\\begin{axis}\s*?(\[.*?\])?(.*?)\\end{axis}',re.MULTILINE|re.DOTALL)
@@ -21,44 +24,145 @@ lead_on_plots = re.compile(r'''( \\addplot \s* (\[.*?\]) \s*
                               \s*  \\addplot .*? \2 .*? \5
                             ''',re.X|re.MULTILINE|re.DOTALL)
 
-@total_ordering
+class Heap:
+    def __init__(self,comp=lt,*args):
+        self.array = []
+        self.index = {} #For removal
+        self.comp = comp
+
+    def push(self,obj):
+        if obj in self.index:
+            raise ValueError('object already in array')
+
+        i = len(self.array)
+        self.index[obj] = i
+        self.array.append(obj)
+        self.up(i)
+
+
+    def pop(self,rem=None):
+        if rem is None:
+            rem = self.array[0]
+
+        if rem not in self.index:
+            raise IndexError('object not in heap')
+
+        last = self.array.pop()
+        i = self.index.pop(rem)
+        if i != len(self.array):
+            #Swap the last element into the removed position then restore heap
+            self.array[i] = last
+            self.index[last] = i
+            if self.comp(rem,last):
+                self.down(i)
+            else:
+                self.up(i)
+        
+        return rem
+
+    def update(self,obj):
+        if obj not in self.index:
+            raise IndexError('object not in heap')
+        self.pop(obj)
+        self.push(obj)
+
+    def __len__(self):
+        return len(self.array)
+    def __bool__(self):
+        return len(self.array) == 0
+    def __getitem__(self,key):
+        return self.array[key]
+
+    def up(self,i):
+        '''
+        Swap the object at index i with its parent until the heap is restored
+        '''
+        obj = self.array[i]
+        while i > 0:
+            up = (i-1) >> 1
+            parent = self.array[up]
+            if self.comp(obj,parent):
+                # self.array[up] = obj
+                # self.index[obj] = up
+                self.array[i] = parent
+                self.index[parent] = i
+                i = up
+                continue
+            break
+        self.array[i] = obj
+        self.index[obj] = i
+
+    def down(self,i):
+        obj = self.array[i]
+        n = len(self.array)
+
+        while True:
+            right = (i+1)<<1
+            left = right-1
+
+            # Find the smallest of current, and two childrend
+            down = i
+            child = obj
+            if left < n and self.comp(self.array[left],child):
+                down = left
+                child = self.array[left]
+            if right < n and self.comp(self.array[right],child):
+                down = right
+                child = self.array[right]
+            #Heap is restored
+            if down == i:
+                break
+
+            #Swap the moving object and the correct child
+            self.array[i] = child
+            self.index[child] = i
+
+            self.array[down] = obj
+            self.index[obj] = down
+            i = down
+            
+
 class Point:
     #Doubly linked list of coordinates
-
     def __init__(self,x,y=None,p=None,n=None):
-        self.x = x 
-        self.y = y
-        self.n = n
-        self.p = p
+        self.__dict__["x"] =  x 
+        self.__dict__["y"] =  y
+        self.__dict__["n"] =  n
+        self.__dict__["p"] =  p
+        self.__dict__["area"] =  None
         if p:
             p.n = self
         if n:
             n.p = self
 
-    def area(self):
-        if self.n is None or self.p is None:
-            return None
+        self.update_area()
 
+    def __setattr__(self,name,value):
+        self.__dict__[name] = value
+        self.update_area()
+        
+    def __hash__(self):
+        return hash((self.x,self.y))
+    def __eq__(self,other):
+        # return self.area() == other.area()
+        return (self.x == other.x) and (self.y == other.y)
+    def __str__(self):
+        return '%0.6f,%0.6f' % (self.x,self.y)
+    def __repr__(self):
+        return str(self.area)
+
+    def update_area(self):
+        '''Area this point makes with its two neighbours'''
+        if self.n is None or self.p is None:
+            return self.area == None
         a = self.p
         b = self
         c = self.n
-        ax,bx,cx = a.x,b.x,c.x
-        ay,by,cy = a.y,b.y,c.y
+        ar = abs((b.y - c.y)*a.x + (c.y-a.y)*b.x + (a.y-b.y)*c.x)/2
+        self.__dict__['area'] = ar
 
-        # ar = abs((b.y - c.y)*a.x + (c.y-a.y)*b.x + (a.y-b.y)*c.x)/2
-        ar = abs((by - cy)*ax + (cy-ay)*bx + (ay-by)*cx)/2
-
-        return ar
-
-    def __lt__(self,other):
-        return self.area() < other.area()
-
-    def __eq__(self,other):
-        return self.area() == other.area()
-
-    def __str__(self):
-        return '\t%0.6f\t%0.6f' % (self.x,self.y)
-
+    def __lt__(a,b):
+        return a.area < b.area
 
     def simplify(self,tol):
         '''
@@ -70,19 +174,23 @@ class Point:
         
          The first and last points are skipped.
         '''
-
-        h = []
+        h = Heap()
         pt = self.n
         while pt.n:
-            heappush(h,pt)
+            h.push(pt)
             pt = pt.n
-
         i = 0
-        while len(h) > 0 and h[0].area() < tol:
+        while len(h) > 0 and h[0].area < tol:
             i += 1
-            pt = heappop(h)
+            pt = h.pop()
             pt.p.n = pt.n
             pt.n.p = pt.p
+            #The area of the neighbouring triangles has now changed,
+            #so we need to fix the heap
+            if pt.p.p is not None:
+                h.update(pt.p)
+            if pt.n.n is not None:
+                h.update(pt.n)
 
         print("%d points removed"%i,file=sys.stderr)
 
@@ -167,19 +275,20 @@ def simplify_plot(match):
     return  '\\begin{axis}%s\n%s\n\\end{axis}'%( match.group(1) or '', plot.sub(simplify_table,match.group(2)) or '')
 
 
-tol = None
-f = open(sys.argv[1],'rU')
-if len(sys.argv) > 2:
-    tol = float(sys.argv[2])
-else:
+if __name__ == "__main__":
     tol = None
+    f = open(sys.argv[1],'rU')
+    if len(sys.argv) > 2:
+        tol = float(sys.argv[2])
+    else:
+        tol = None
 
-s = f.read()
-s = axis.sub(simplify_plot,s)
-s,n = lead_on_plots.subn(r'\1',s)
-if n>0:
-    print("Lead-on plots detected. ",file=sys.stderr)
-    print("I have merged them, but you may want to use  ('maxChunkLength',Inf) in matlab2tikz",file=sys.stderr)
+    s = f.read()
     s = axis.sub(simplify_plot,s)
+    # s,n = lead_on_plots.subn(r'\1',s)
+    # if n>0:
+    #     print("Lead-on plots detected. ",file=sys.stderr)
+    #     print("I have merged them, but you may want to use  ('maxChunkLength',Inf) in matlab2tikz",file=sys.stderr)
+    #     s = axis.sub(simplify_plot,s)
 
-print(s)
+    print(s)
