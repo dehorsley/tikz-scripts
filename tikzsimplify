@@ -1,5 +1,5 @@
-#!/usr/bin/env pypy3
 #!/usr/bin/env python3
+#!/usr/bin/env pypy3
 
 from __future__ import print_function #Use python3 print statments in python2.7
 import re
@@ -27,15 +27,11 @@ lead_on_plots = re.compile(r'''( \\addplot \s* (\[.*?\]) \s*
 class Heap:
     def __init__(self,comp=lt,*args):
         self.array = []
-        self.index = {} #For removal
         self.comp = comp
 
     def push(self,obj):
-        if obj in self.index:
-            raise ValueError('object already in array')
-
         i = len(self.array)
-        self.index[obj] = i
+        obj.__heappos__ = i
         self.array.append(obj)
         self.up(i)
 
@@ -44,25 +40,23 @@ class Heap:
         if rem is None:
             rem = self.array[0]
 
-        if rem not in self.index:
-            raise IndexError('object not in heap')
-
         last = self.array.pop()
-        i = self.index.pop(rem)
+        i = rem.__heappos__
         if i != len(self.array):
             #Swap the last element into the removed position then restore heap
             self.array[i] = last
-            self.index[last] = i
+            last.__heappos__ = i
             if self.comp(rem,last):
                 self.down(i)
             else:
                 self.up(i)
         
+        del rem.__heappos__
         return rem
 
     def update(self,obj):
-        if obj not in self.index:
-            raise IndexError('object not in heap')
+        # if obj not in self.index:
+        #     raise IndexError('object not in heap')
         self.pop(obj)
         self.push(obj)
 
@@ -82,15 +76,13 @@ class Heap:
             up = (i-1) >> 1
             parent = self.array[up]
             if self.comp(obj,parent):
-                # self.array[up] = obj
-                # self.index[obj] = up
                 self.array[i] = parent
-                self.index[parent] = i
+                parent.__heappos__ = i
                 i = up
                 continue
             break
         self.array[i] = obj
-        self.index[obj] = i
+        obj.__heappos__ = i
 
     def down(self,i):
         obj = self.array[i]
@@ -115,21 +107,22 @@ class Heap:
 
             #Swap the moving object and the correct child
             self.array[i] = child
-            self.index[child] = i
+            child.__heappos__ = i
 
             self.array[down] = obj
-            self.index[obj] = down
+            obj.__heappos__ = down
             i = down
             
 
-class Point:
+class Point(object):
     #Doubly linked list of coordinates
     def __init__(self,x,y=None,p=None,n=None):
-        self.__dict__["x"] =  x 
-        self.__dict__["y"] =  y
-        self.__dict__["n"] =  n
-        self.__dict__["p"] =  p
-        self.__dict__["area"] =  None
+        
+        object.__setattr__(self,'x',x)
+        object.__setattr__(self,'y',y)
+        object.__setattr__(self,'n',n)
+        object.__setattr__(self,'p',p)
+        object.__setattr__(self,'area',None)
         if p:
             p.n = self
         if n:
@@ -138,8 +131,9 @@ class Point:
         self.update_area()
 
     def __setattr__(self,name,value):
-        self.__dict__[name] = value
-        self.update_area()
+        object.__setattr__(self,name,value)
+        if name[0] != '_':
+            self.update_area()
         
     def __hash__(self):
         return hash((self.x,self.y))
