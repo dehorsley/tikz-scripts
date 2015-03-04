@@ -3,7 +3,7 @@ This repo contains a few scripts I wrote for dealing with matlab2tikz generated 
 
 ## tikzsimplify
 ```
-python tikzsimplify fig.tex [tol] > fig-clean.tex
+python tikzsimplify [-h] [-t tol] [infile.tex] [outfile.tex]
 ```
 This is probably the most useful script here. If you give it a matlab2tikz
 generated `.tex` file, it will perform the [Visvalingam–Whyatt algorithm][1] to
@@ -25,8 +25,8 @@ running optimally.
 
 To prevent this, I recommend you export your figure with `matlab2tikz(...,'maxChunkLength',Inf)`
 
-I highly recommend running this with [PyPy](http://pypy.org/) as it gives about a 25x
-speed improvment.
+I highly recommend running this in [PyPy 2.5][PyPy] instead of the
+usual python interpreter as it gives about a 25x speed improvement.
 
 ## pdf2pdf
 Modified version of eps2eps. In most cases it will reduce the size of a PDF file.
@@ -40,4 +40,5 @@ edit it to import whatever packages you're using.
 Unix/Cygwin only. Requires latex, ghostscript and pdfcrop.
 
 
+[PyPy]: http://pypy.org/
 [1]: https://hydra.hull.ac.uk/resources/hull:8338
