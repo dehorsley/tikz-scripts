@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-#!/usr/bin/env pypy3
+#!/usr/bin/env pypy
 
 from __future__ import print_function #Use python3 print statments in python2.7
 import re
-from heapq import *
-from functools import total_ordering
+import argparse
 import sys
 from math import log10,pow
-
 from operator import lt
+
 
 tikzpic = re.compile(r'\\begin{tikzpicture}(.*)\end{tikzpicture}',re.MULTILINE|re.DOTALL)
 axis = re.compile(r'\\begin{axis}\s*?(\[.*?\])?(.*?)\\end{axis}',re.MULTILINE|re.DOTALL)
@@ -24,7 +23,8 @@ lead_on_plots = re.compile(r'''( \\addplot \s* (\[.*?\]) \s*
                               \s*  \\addplot .*? \2 .*? \5
                             ''',re.X|re.MULTILINE|re.DOTALL)
 
-class Heap:
+
+class Heap(object):
     def __init__(self,comp=lt,*args):
         self.array = []
         self.comp = comp
@@ -183,6 +183,7 @@ class Point(object):
             #so we need to fix the heap
             if pt.p.p is not None:
                 h.update(pt.p)
+
             if pt.n.n is not None:
                 h.update(pt.n)
 
@@ -262,21 +263,37 @@ def simplify_plot(match):
     
     def simplify_table(match):
         path = table_to_path(comments.sub('',match.group(3)),logx,logy)
-        path.simplify(tab_tol)
-        return '\\addplot %s\n  table%s{%%\n%s\n};' % ( match.group(1) or '', match.group(2) or '', path_to_table(path,logx,logy))
+        if path is not None:
+            path.simplify(tab_tol)
+            return '\\addplot %s\n  table%s{%%\n%s\n};' % ( match.group(1) or '', match.group(2) or '', path_to_table(path,logx,logy))
 
 
     return  '\\begin{axis}%s\n%s\n\\end{axis}'%( match.group(1) or '', plot.sub(simplify_table,match.group(2)) or '')
 
 
-if __name__ == "__main__":
-    tol = None
-    f = open(sys.argv[1],'rU')
-    if len(sys.argv) > 2:
-        tol = float(sys.argv[2])
-    else:
-        tol = None
+def printv(s):
+    if verbose:
+        print(s,file=args.outfile)
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Process matlab2tikz generated plots.')
+    parser.add_argument('infile',metavar='infile.tex', nargs='?', type=argparse.FileType('r'),default=sys.stdin)
+    parser.add_argument('outfile', metavar='outfile.tex', nargs='?', type=argparse.FileType('w'),default=sys.stdout)
+
+    parser.add_argument('-t',metavar='tol', 
+            help='tolerence of simplify algorithm (defaults to best guess)',
+            type=float)
+    parser.add_argument('-v', help='verbose')
+    args = parser.parse_args()
+
+    if 'v' in args:
+        print
+
+    try:
+        tol = args.tol
+    except AttributeError:
+        tol = None
+    f = args.infile
     s = f.read()
     s = axis.sub(simplify_plot,s)
     # s,n = lead_on_plots.subn(r'\1',s)
@@ -285,4 +302,4 @@ if __name__ == "__main__":
     #     print("I have merged them, but you may want to use  ('maxChunkLength',Inf) in matlab2tikz",file=sys.stderr)
     #     s = axis.sub(simplify_plot,s)
 
-    print(s)
+    print(s,file=args.outfile)
