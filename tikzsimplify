@@ -1,5 +1,5 @@
-#!/usr/bin/env python3
 #!/usr/bin/env pypy
+#!/usr/bin/env python3
 
 from __future__ import print_function #Use python3 print statments in python2.7
 import re
@@ -187,7 +187,7 @@ class Point(object):
             if pt.n.n is not None:
                 h.update(pt.n)
 
-        print("%d points removed"%i,file=sys.stderr)
+        printv("%d points removed"%i)
 
 def table_to_path(s,logx=False,logy=False):
     rows = s.split('\n')
@@ -210,7 +210,7 @@ def table_to_path(s,logx=False,logy=False):
             if i ==1:
                 head = tail
             i += 1
-    print("%d points found"%i,file=sys.stderr)
+    printv("%d points found"%i)
 
     return head
 
@@ -236,13 +236,13 @@ def simplify_plot(match):
     logx= False
     xmode = re.search('xmode=(.*?),',opts)
     if xmode and xmode.group(1) == 'log':
-        print("using logx mode",file=sys.stderr)
+        printv("using logx mode")
         logx=True
     
     logy= False
     ymode = re.search('ymode=(.*?),',opts)
     if ymode and ymode.group(1) == 'log':
-        print("using logy mode",file=sys.stderr)
+        printv("using logy mode")
         logy=True
 
     xmin = float(re.search('xmin=(.*?),',opts).group(1))
@@ -256,8 +256,8 @@ def simplify_plot(match):
         ymin,ymax = log10(ymin),log10(ymax)
 
     if tol is None:
-        tab_tol = (xmax-xmin)*(ymax-ymin)/(15*9*500)
-        print("selecting tol of: %g"%tab_tol,file=sys.stderr)
+        tab_tol = (xmax-xmin)*(ymax-ymin)/(15*9*800)
+        printv("selecting tol of: %g"%tab_tol)
     else:
         tab_tol = tol
     
@@ -273,33 +273,46 @@ def simplify_plot(match):
 
 def printv(s):
     if verbose:
-        print(s,file=args.outfile)
+        print(s,file=sys.stderr)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Process matlab2tikz generated plots.')
-    parser.add_argument('infile',metavar='infile.tex', nargs='?', type=argparse.FileType('r'),default=sys.stdin)
-    parser.add_argument('outfile', metavar='outfile.tex', nargs='?', type=argparse.FileType('w'),default=sys.stdout)
-
+    parser = argparse.ArgumentParser(description='Simplify matlab2tikz generated plots.')
+    parser.add_argument('infile',metavar='infile.tex',nargs=1,help="file to simplify. Use '-' for stdin")
     parser.add_argument('-t',metavar='tol', 
             help='tolerence of simplify algorithm (defaults to best guess)',
             type=float)
-    parser.add_argument('-v', help='verbose')
+    parser.add_argument('-v','--verbose',  action='store_true',help="print info to stderr",default=False)
+    parser.add_argument('-i','--in-place',  action='store_true',help="overwrite input file after simplification",default=False)
+    parser.add_argument('-o',help='output to outfile.tex rather than stdout',metavar='outfile.tex',default='-')
     args = parser.parse_args()
 
-    if 'v' in args:
-        print
-
+    verbose = args.verbose
     try:
         tol = args.tol
     except AttributeError:
         tol = None
-    f = args.infile
+
+    if args.infile == '-':
+        f = sys.stdin
+    else:
+        f = open(args.infile,'r')
+
     s = f.read()
+    f.close()
     s = axis.sub(simplify_plot,s)
+
     # s,n = lead_on_plots.subn(r'\1',s)
     # if n>0:
-    #     print("Lead-on plots detected. ",file=sys.stderr)
-    #     print("I have merged them, but you may want to use  ('maxChunkLength',Inf) in matlab2tikz",file=sys.stderr)
+    #     printv("Lead-on plots detected. ")
+    #     printv("I have merged them, but you may want to use  ('maxChunkLength',Inf) in matlab2tikz")
     #     s = axis.sub(simplify_plot,s)
 
-    print(s,file=args.outfile)
+    if args.in_place:
+        f = open(args.infile,'w')
+    elif 'outfile' not in args or args.outfile == '-':
+        f = sys.stdout
+    else:
+        f = open(args.outfile,'w')
+
+    f.write(s)
+    f.close()

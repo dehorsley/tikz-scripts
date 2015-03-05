@@ -3,7 +3,13 @@ This repo contains a few scripts I wrote for dealing with matlab2tikz generated 
 
 ## tikzsimplify
 ```
-python tikzsimplify [-h] [-t tol] [infile.tex] [outfile.tex]
+tikzsimplify [-h] [-t tol] [-v] [-i] [-o outfile.tex] infile.tex
+optional arguments:
+  -h, --help      show this help message and exit
+  -t tol          tolerence of simplify algorithm (defaults to best guess)
+  -v, --verbose   print info to stderr
+  -i, --in-place  overwrite input file after simplification
+  -o outfile.tex  output to outfile.tex rather than stdout
 ```
 This is probably the most useful script here. If you give it a matlab2tikz
 generated `.tex` file, it will perform the [Visvalingam–Whyatt algorithm][1] to
