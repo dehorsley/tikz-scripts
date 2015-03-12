@@ -1,4 +1,3 @@
-#!/usr/bin/env pypy
 #!/usr/bin/env python3
 
 from __future__ import print_function #Use python3 print statments in python2.7
