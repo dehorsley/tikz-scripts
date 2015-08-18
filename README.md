@@ -2,7 +2,7 @@
 This repo contains a few scripts I wrote for dealing with matlab2tikz generated tikz figure.
 
 ## tikzsimplify
-**This functionality has now been merged into the `cleanfigure` function of [matlab2tikz](/matlab2tikz/matlab2tikz). You probably want to use that.**
+**This functionality has now been merged into the `cleanfigure` function of [matlab2tikz](http://github.com/matlab2tikz/matlab2tikz). You probably want to use that.**
 ```
 tikzsimplify [-h] [-t tol] [-v] [-i] [-o outfile.tex] infile.tex
 optional arguments:
@@ -42,7 +42,7 @@ Unix/Cygwin only.  Requires ghostscript.
 
 ## tikz2pdf
 Generates a cropped and minimized PDF of a TikZ `.tex` figure. You may want to
-edit it to import whatever packages you're using.
+edit this script to import whatever packages you're using.
 
 Unix/Cygwin only. Requires latex, ghostscript and pdfcrop.
 
