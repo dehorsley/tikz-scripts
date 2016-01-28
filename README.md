@@ -1,4 +1,4 @@
-# TikZ Scripts
+# TikZ Scripts (unmaintained)
 This repo contains a few scripts I wrote for dealing with matlab2tikz generated tikz figure.
 
 ## tikzsimplify
